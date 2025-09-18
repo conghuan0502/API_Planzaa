@@ -1,0 +1,949 @@
+const express = require('express');
+const { protect } = require('../middleware/authMiddleware');
+const { uploadPoster, uploadAlbumImage: uploadAlbumImageMiddleware, uploadMultipleAlbumImages: uploadMultipleAlbumImagesMiddleware, handleUploadError } = require('../middleware/uploadMiddleware');
+const {
+  createEvent,
+  getAllEvents,
+  getMyEvents,
+  getEvent,
+  updateEvent,
+  deleteEvent,
+  joinEvent,
+  getEventByInviteLink,
+  joinPublicEvent,
+  uploadAlbumImage,
+  uploadMultipleAlbumImages,
+  getAlbumImages,
+  deleteAlbumImage,
+  updateAlbumImageDescription,
+  addTodo,
+  updateTodo,
+  deleteTodo,
+  getTodoList
+} = require('../controllers/eventController');
+
+const router = express.Router();
+const jsonParser = express.json();
+
+/**
+ * @swagger
+ * /events/public/by-invite/{inviteLink}:
+ *   get:
+ *     summary: Publicly view an event by invite link (no auth required)
+ *     tags: [Events]
+ *     parameters:
+ *       - in: path
+ *         name: inviteLink
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event invite link
+ *     responses:
+ *       200:
+ *         description: Event retrieved successfully
+ *       404:
+ *         description: Event not found
+ */
+
+/**
+ * @swagger
+ * tags:
+ *   name: Events
+ *   description: Event management endpoints
+ */
+
+/**
+ * @swagger
+ * /events:
+ *   get:
+ *     summary: Get all events with filtering and pagination
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of events per page
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [date, createdAt, title]
+ *           default: date
+ *         description: Sort field
+ *       - in: query
+ *         name: order
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: asc
+ *         description: Sort order
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term for title or description
+ *       - in: query
+ *         name: location
+ *         schema:
+ *           type: string
+ *         description: Filter by location
+ *     responses:
+ *       200:
+ *         description: Events retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 results:
+ *                   type: integer
+ *                   description: Number of events returned
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     totalEvents:
+ *                       type: integer
+ *                     hasNextPage:
+ *                       type: boolean
+ *                     hasPrevPage:
+ *                       type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     events:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Event'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   post:
+ *     summary: Create a new event
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - description
+ *               - date
+ *               - location
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: Event title
+ *                 example: "Tech Meetup 2024"
+ *               description:
+ *                 type: string
+ *                 description: Event description
+ *                 example: "A great opportunity to network with tech professionals"
+ *               date:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Event date and time
+ *                 example: "2024-12-25T18:00:00.000Z"
+ *               location:
+ *                 type: string
+ *                 description: Event location
+ *                 example: "123 Main St, City, Country"
+ *               maxParticipants:
+ *                 type: number
+ *                 description: Maximum number of participants
+ *                 example: 50
+ *     responses:
+ *       201:
+ *         description: Event created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   $ref: '#/components/schemas/Event'
+ *       400:
+ *         description: Invalid input data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+/**
+ * @swagger
+ * /events/my-events:
+ *   get:
+ *     summary: Get all events created by the authenticated user
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of events per page
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [date, createdAt, title]
+ *           default: createdAt
+ *         description: Sort field
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term for title or description
+ *       - in: query
+ *         name: location
+ *         schema:
+ *           type: string
+ *         description: Filter by location
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, cancelled, completed]
+ *         description: Filter by event status
+ *     responses:
+ *       200:
+ *         description: User's events retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 results:
+ *                   type: integer
+ *                   description: Number of events returned
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     totalEvents:
+ *                       type: integer
+ *                     hasNextPage:
+ *                       type: boolean
+ *                     hasPrevPage:
+ *                       type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     events:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Event'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+/**
+ * @swagger
+ * /events/{id}:
+ *   get:
+ *     summary: Get a specific event by ID
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     responses:
+ *       200:
+ *         description: Event retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   $ref: '#/components/schemas/Event'
+ *       404:
+ *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   patch:
+ *     summary: Update an event
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: Event title
+ *                 example: "Updated Tech Meetup 2024"
+ *               description:
+ *                 type: string
+ *                 description: Event description
+ *                 example: "Updated description for the tech meetup"
+ *               date:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Event date and time
+ *                 example: "2024-12-25T19:00:00.000Z"
+ *               location:
+ *                 type: string
+ *                 description: Event location
+ *                 example: "456 Oak St, City, Country"
+ *               maxParticipants:
+ *                 type: number
+ *                 description: Maximum number of participants
+ *                 example: 75
+ *     responses:
+ *       200:
+ *         description: Event updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   $ref: '#/components/schemas/Event'
+ *       400:
+ *         description: Invalid input data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Not authorized to update this event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   delete:
+ *     summary: Delete an event
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     responses:
+ *       204:
+ *         description: Event deleted successfully
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Not authorized to delete this event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+/**
+ * @swagger
+ * /events/join/{inviteLink}:
+ *   post:
+ *     summary: Join an event using invite link
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: inviteLink
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event invite link
+ *     responses:
+ *       200:
+ *         description: Successfully joined the event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Successfully joined the event"
+ *                 data:
+ *                   $ref: '#/components/schemas/Event'
+ *       400:
+ *         description: Invalid invite link or already joined
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+/**
+ * @swagger
+ * tags:
+ *   name: Event Album
+ *   description: Image album management endpoints for events
+ */
+
+/**
+ * @swagger
+ * /events/{id}/album:
+ *   get:
+ *     summary: Get all images from an event album
+ *     tags: [Event Album]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     responses:
+ *       200:
+ *         description: Event album images retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     images:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           imageId:
+ *                             type: string
+ *                           originalName:
+ *                             type: string
+ *                           fileName:
+ *                             type: string
+ *                           fileSize:
+ *                             type: number
+ *                           mimeType:
+ *                             type: string
+ *                           uploadedBy:
+ *                             type: object
+ *                           uploadedAt:
+ *                             type: string
+ *                             format: date-time
+ *                           description:
+ *                             type: string
+ *                           url:
+ *                             type: string
+ *                     count:
+ *                       type: number
+ *       404:
+ *         description: Event not found
+ *   post:
+ *     summary: Upload a single image to event album
+ *     tags: [Event Album]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file to upload
+ *               description:
+ *                 type: string
+ *                 description: Optional description for the image
+ *     responses:
+ *       201:
+ *         description: Image uploaded successfully
+ *       400:
+ *         description: Invalid file or no file provided
+ *       403:
+ *         description: Not authorized to upload to this event
+ *       404:
+ *         description: Event not found
+ */
+
+/**
+ * @swagger
+ * /events/{id}/album/multiple:
+ *   post:
+ *     summary: Upload multiple images to event album
+ *     tags: [Event Album]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 description: Multiple image files to upload
+ *     responses:
+ *       201:
+ *         description: Images uploaded successfully
+ *       400:
+ *         description: Invalid files or no files provided
+ *       403:
+ *         description: Not authorized to upload to this event
+ *       404:
+ *         description: Event not found
+ */
+
+/**
+ * @swagger
+ * /events/{id}/album/{imageId}:
+ *   delete:
+ *     summary: Delete an image from event album
+ *     tags: [Event Album]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *       - in: path
+ *         name: imageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Image ID
+ *     responses:
+ *       200:
+ *         description: Image deleted successfully
+ *       403:
+ *         description: Not authorized to delete this image
+ *       404:
+ *         description: Event or image not found
+ *   patch:
+ *     summary: Update image description
+ *     tags: [Event Album]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *       - in: path
+ *         name: imageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Image ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               description:
+ *                 type: string
+ *                 description: New description for the image
+ *     responses:
+ *       200:
+ *         description: Image description updated successfully
+ *       403:
+ *         description: Not authorized to update this image
+ *       404:
+ *         description: Event or image not found
+ */
+
+/**
+ * @swagger
+ * /events/{id}/todos:
+ *   get:
+ *     summary: Get todo list for an event
+ *     tags: [Event Todos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     responses:
+ *       200:
+ *         description: Todo list retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     todos:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/TodoItem'
+ *                     stats:
+ *                       $ref: '#/components/schemas/TodoStats'
+ *                     overdue:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/TodoItem'
+ *       403:
+ *         description: Not authorized to view todos for this event
+ *       404:
+ *         description: Event not found
+ *   post:
+ *     summary: Add a new todo item to an event
+ *     tags: [Event Todos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - description
+ *             properties:
+ *               description:
+ *                 type: string
+ *                 description: Todo item description
+ *                 example: "Buy decorations"
+ *               assignedTo:
+ *                 type: string
+ *                 description: User ID to assign the todo to
+ *                 example: "507f1f77bcf86cd799439011"
+ *               dueDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Due date for the todo
+ *                 example: "2024-01-15"
+ *               priority:
+ *                 type: string
+ *                 enum: [low, medium, high]
+ *                 default: medium
+ *                 description: Priority level of the todo
+ *               notes:
+ *                 type: string
+ *                 description: Additional notes for the todo
+ *                 example: "Get balloons and streamers"
+ *     responses:
+ *       201:
+ *         description: Todo item created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     todo:
+ *                       $ref: '#/components/schemas/TodoItem'
+ *       400:
+ *         description: Invalid input data
+ *       403:
+ *         description: Not authorized to add todos to this event
+ *       404:
+ *         description: Event not found
+ */
+
+/**
+ * @swagger
+ * /events/{id}/todos/{todoId}:
+ *   patch:
+ *     summary: Update a todo item
+ *     tags: [Event Todos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *       - in: path
+ *         name: todoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Todo item ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               description:
+ *                 type: string
+ *                 description: Todo item description
+ *               completed:
+ *                 type: boolean
+ *                 description: Whether the todo is completed
+ *               assignedTo:
+ *                 type: string
+ *                 description: User ID to assign the todo to
+ *               dueDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Due date for the todo
+ *               priority:
+ *                 type: string
+ *                 enum: [low, medium, high]
+ *                 description: Priority level of the todo
+ *               notes:
+ *                 type: string
+ *                 description: Additional notes for the todo
+ *     responses:
+ *       200:
+ *         description: Todo item updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     todo:
+ *                       $ref: '#/components/schemas/TodoItem'
+ *       400:
+ *         description: Invalid input data
+ *       403:
+ *         description: Not authorized to update this todo
+ *       404:
+ *         description: Event or todo item not found
+ *   delete:
+ *     summary: Delete a todo item
+ *     tags: [Event Todos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *       - in: path
+ *         name: todoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Todo item ID
+ *     responses:
+ *       200:
+ *         description: Todo item deleted successfully
+ *       403:
+ *         description: Not authorized to delete this todo
+ *       404:
+ *         description: Event or todo item not found
+ */
+
+// Public routes for open access via invite link
+router.get('/public/by-invite/:inviteLink', getEventByInviteLink);
+// Protect all other routes
+router.use(protect);
+
+// Event routes
+router.route('/')
+  .get(getAllEvents)
+  .post(uploadPoster, handleUploadError, createEvent);
+
+// Get user's created events
+router.get('/my-events', getMyEvents);
+
+router.route('/:id')
+  .get(getEvent)
+  .patch(jsonParser, updateEvent)
+  .delete(deleteEvent);
+
+// Join event route
+router.post('/join/:inviteLink', joinEvent);
+// Join public event without invite
+router.post('/:id/join', joinPublicEvent);
+
+// Album routes
+router.route('/:id/album')
+  .get(getAlbumImages)
+  .post(uploadAlbumImageMiddleware, handleUploadError, uploadAlbumImage);
+
+router.post('/:id/album/multiple', uploadMultipleAlbumImagesMiddleware, handleUploadError, uploadMultipleAlbumImages);
+
+router.route('/:id/album/:imageId')
+  .delete(deleteAlbumImage)
+  .patch(jsonParser, updateAlbumImageDescription);
+
+// Todo list routes
+router.route('/:id/todos')
+  .get(getTodoList)
+  .post(jsonParser, addTodo);
+
+router.route('/:id/todos/:todoId')
+  .patch(jsonParser, updateTodo)
+  .delete(deleteTodo);
+
+module.exports = router; 
