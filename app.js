@@ -73,6 +73,23 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
   customSiteTitle: 'Event Management API Documentation'
 }));
 
+// Root route
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'Welcome to Event Management API',
+    version: '1.0.0',
+    documentation: '/api-docs',
+    endpoints: {
+      users: '/api/users',
+      events: '/api/events',
+      locations: '/api/locations',
+      weather: '/api/weather'
+    },
+    timestamp: req.requestTime
+  });
+});
+
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/events', eventRoutes);
