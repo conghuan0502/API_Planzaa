@@ -1,6 +1,7 @@
 const express = require('express');
 const { protect } = require('../middleware/authMiddleware');
 const { uploadAvatar } = require('../middleware/uploadMiddleware');
+const { userCache, invalidateCache } = require('../middleware/cacheMiddleware');
 const {
   register,
   login,
@@ -273,8 +274,8 @@ router.post('/login', login);
 
 // Protected routes
 router.use(protect);
-router.get('/profile', getProfile);
-router.patch('/profile', updateProfile);
-router.patch('/avatar', uploadAvatar, updateAvatar);
+router.get('/profile', userCache(600), getProfile); // Cache for 10 minutes
+router.patch('/profile', invalidateCache(['user:.*:profile']), updateProfile);
+router.patch('/avatar', uploadAvatar, invalidateCache(['user:.*:profile']), updateAvatar);
 
 module.exports = router; 

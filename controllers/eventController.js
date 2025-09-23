@@ -1,6 +1,7 @@
 const Event = require('../models/eventModel');
 const User = require('../models/userModel');
 const { uploadPoster, uploadAlbumImage, deleteFile, getFileUrl } = require('../utils/fileUpload');
+const { invalidateEventCache, invalidateUserCache } = require('../utils/cacheHelpers');
 const { v4: uuidv4 } = require('uuid');
 
 // Create new event
@@ -89,6 +90,10 @@ exports.createEvent = async (req, res) => {
     await User.findByIdAndUpdate(req.user._id, {
       $push: { createdEvents: newEvent._id }
     });
+
+    // Invalidate cache after successful event creation
+    invalidateEventCache(null, ['user:.*:my-events']);
+    invalidateUserCache(req.user._id.toString(), ['user:.*:my-events']);
 
     // Try to fetch weather data if event is within 10 days
     try {
@@ -378,6 +383,10 @@ exports.updateEvent = async (req, res) => {
       { new: true, runValidators: true }
     );
 
+    // Invalidate cache after successful event update
+    invalidateEventCache(req.params.id, ['user:.*:my-events']);
+    invalidateUserCache(req.user._id.toString(), ['user:.*:my-events']);
+
     res.status(200).json({
       status: 'success',
       data: {
@@ -424,6 +433,10 @@ exports.deleteEvent = async (req, res) => {
       { joinedEvents: req.params.id },
       { $pull: { joinedEvents: req.params.id } }
     );
+
+    // Invalidate cache after successful event deletion
+    invalidateEventCache(req.params.id, ['user:.*:my-events', 'user:.*:joinedEvents']);
+    invalidateUserCache(req.user._id.toString(), ['user:.*:my-events']);
 
     res.status(204).json({
       status: 'success',
@@ -491,6 +504,10 @@ exports.joinEvent = async (req, res) => {
     await User.findByIdAndUpdate(req.user._id, {
       $push: { joinedEvents: event._id }
     });
+
+    // Invalidate cache after successful event join
+    invalidateEventCache(event._id.toString(), ['user:.*:joinedEvents']);
+    invalidateUserCache(req.user._id.toString(), ['user:.*:joinedEvents']);
 
     res.status(200).json({
       status: 'success',
@@ -967,6 +984,9 @@ exports.addTodo = async (req, res) => {
 
     const addedTodo = event.todoList[event.todoList.length - 1];
 
+    // Invalidate cache after successful todo addition
+    invalidateEventCache(req.params.id, ['user:.*:todos:.*']);
+
     res.status(201).json({
       status: 'success',
       data: {
@@ -1047,6 +1067,9 @@ exports.updateTodo = async (req, res) => {
     await event.populate('todoList.createdBy', 'name email');
     await event.populate('todoList.assignedTo', 'name email');
 
+    // Invalidate cache after successful todo update
+    invalidateEventCache(req.params.id, ['user:.*:todos:.*']);
+
     res.status(200).json({
       status: 'success',
       data: {
@@ -1098,6 +1121,9 @@ exports.deleteTodo = async (req, res) => {
     // Remove todo item
     todo.remove();
     await event.save();
+
+    // Invalidate cache after successful todo deletion
+    invalidateEventCache(req.params.id, ['user:.*:todos:.*']);
 
     res.status(200).json({
       status: 'success',

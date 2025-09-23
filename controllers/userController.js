@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 const { uploadAvatar, deleteFile } = require('../utils/fileUpload');
+const { invalidateUserCache } = require('../utils/cacheHelpers');
 
 // Generate JWT token
 const signToken = (id) => {
@@ -123,6 +124,9 @@ exports.updateProfile = async (req, res) => {
       { new: true, runValidators: true }
     );
 
+    // Invalidate user cache after successful update
+    invalidateUserCache(req.user._id.toString(), ['user:.*:profile']);
+
     res.status(200).json({
       status: 'success',
       data: {
@@ -169,6 +173,9 @@ exports.updateAvatar = async (req, res) => {
       },
       { new: true, runValidators: true }
     );
+
+    // Invalidate user cache after successful avatar update
+    invalidateUserCache(req.user._id.toString(), ['user:.*:profile', 'user:.*:avatar']);
 
     res.status(200).json({
       status: 'success',

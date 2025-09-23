@@ -1,6 +1,7 @@
 const express = require('express');
 const { protect } = require('../middleware/authMiddleware');
 const { uploadPoster, uploadAlbumImage: uploadAlbumImageMiddleware, uploadMultipleAlbumImages: uploadMultipleAlbumImagesMiddleware, handleUploadError } = require('../middleware/uploadMiddleware');
+const { eventsCache, userCache, invalidateCache } = require('../middleware/cacheMiddleware');
 const {
   createEvent,
   getAllEvents,
@@ -910,16 +911,16 @@ router.use(protect);
 
 // Event routes
 router.route('/')
-  .get(getAllEvents)
-  .post(uploadPoster, handleUploadError, createEvent);
+  .get(eventsCache(300), getAllEvents) // Cache for 5 minutes
+  .post(uploadPoster, handleUploadError, invalidateCache(['events:.*', 'user:.*:my-events']), createEvent);
 
 // Get user's created events
-router.get('/my-events', getMyEvents);
+router.get('/my-events', userCache(180), getMyEvents); // Cache for 3 minutes
 
 router.route('/:id')
-  .get(getEvent)
-  .patch(jsonParser, updateEvent)
-  .delete(deleteEvent);
+  .get(eventsCache(600), getEvent) // Cache for 10 minutes
+  .patch(jsonParser, invalidateCache(['events:.*', 'user:.*:my-events']), updateEvent)
+  .delete(invalidateCache(['events:.*', 'user:.*:my-events']), deleteEvent);
 
 // Join event route
 router.post('/join/:inviteLink', joinEvent);
@@ -928,22 +929,22 @@ router.post('/:id/join', joinPublicEvent);
 
 // Album routes
 router.route('/:id/album')
-  .get(getAlbumImages)
-  .post(uploadAlbumImageMiddleware, handleUploadError, uploadAlbumImage);
+  .get(userCache(300), getAlbumImages) // Cache for 5 minutes
+  .post(uploadAlbumImageMiddleware, handleUploadError, invalidateCache(['user:.*:album:.*']), uploadAlbumImage);
 
-router.post('/:id/album/multiple', uploadMultipleAlbumImagesMiddleware, handleUploadError, uploadMultipleAlbumImages);
+router.post('/:id/album/multiple', uploadMultipleAlbumImagesMiddleware, handleUploadError, invalidateCache(['user:.*:album:.*']), uploadMultipleAlbumImages);
 
 router.route('/:id/album/:imageId')
-  .delete(deleteAlbumImage)
-  .patch(jsonParser, updateAlbumImageDescription);
+  .delete(invalidateCache(['user:.*:album:.*']), deleteAlbumImage)
+  .patch(jsonParser, invalidateCache(['user:.*:album:.*']), updateAlbumImageDescription);
 
 // Todo list routes
 router.route('/:id/todos')
-  .get(getTodoList)
-  .post(jsonParser, addTodo);
+  .get(userCache(300), getTodoList) // Cache for 5 minutes
+  .post(jsonParser, invalidateCache(['user:.*:todos:.*']), addTodo);
 
 router.route('/:id/todos/:todoId')
-  .patch(jsonParser, updateTodo)
-  .delete(deleteTodo);
+  .patch(jsonParser, invalidateCache(['user:.*:todos:.*']), updateTodo)
+  .delete(invalidateCache(['user:.*:todos:.*']), deleteTodo);
 
 module.exports = router; 
