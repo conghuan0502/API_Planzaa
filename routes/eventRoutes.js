@@ -6,6 +6,7 @@ const {
   createEvent,
   getAllEvents,
   getMyEvents,
+  getJoinedEvents,
   getEvent,
   updateEvent,
   deleteEvent,
@@ -250,6 +251,92 @@ const jsonParser = express.json();
  *     responses:
  *       200:
  *         description: User's events retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 results:
+ *                   type: integer
+ *                   description: Number of events returned
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     totalEvents:
+ *                       type: integer
+ *                     hasNextPage:
+ *                       type: boolean
+ *                     hasPrevPage:
+ *                       type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     events:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Event'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+/**
+ * @swagger
+ * /events/joined-events:
+ *   get:
+ *     summary: Get all events that the authenticated user has joined
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of events per page
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [date, createdAt, title]
+ *           default: createdAt
+ *         description: Sort field
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term for title or description
+ *       - in: query
+ *         name: location
+ *         schema:
+ *           type: string
+ *         description: Filter by location
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, cancelled, completed]
+ *         description: Filter by event status
+ *     responses:
+ *       200:
+ *         description: User's joined events retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -916,6 +1003,9 @@ router.route('/')
 
 // Get user's created events
 router.get('/my-events', userCache(180), getMyEvents); // Cache for 3 minutes
+
+// Get user's joined events
+router.get('/joined-events', userCache(180), getJoinedEvents); // Cache for 3 minutes
 
 router.route('/:id')
   .get(eventsCache(600), getEvent) // Cache for 10 minutes

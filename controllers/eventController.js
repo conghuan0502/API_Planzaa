@@ -317,6 +317,68 @@ exports.getMyEvents = async (req, res) => {
   }
 };
 
+// Get events that the authenticated user has joined
+exports.getJoinedEvents = async (req, res) => {
+  try {
+    // Build query for user's joined events
+    const queryObj = { ...req.query };
+    const excludedFields = ['page', 'sort', 'limit', 'fields'];
+    excludedFields.forEach(el => delete queryObj[el]);
+
+    // Base filter: only events where the user is a participant
+    const baseFilter = { 'participants.user': req.user._id };
+
+    // Advanced filtering
+    let queryStr = JSON.stringify(queryObj);
+    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`);
+    const additionalFilters = JSON.parse(queryStr);
+
+    // Combine filters
+    const finalFilter = { $and: [baseFilter, additionalFilters] };
+
+    let query = Event.find(finalFilter)
+      .populate('creator', 'name email')
+      .populate('participants.user', 'name email');
+
+    // Sorting
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(',').join(' ');
+      query = query.sort(sortBy);
+    } else {
+      query = query.sort('-createdAt');
+    }
+
+    // Pagination
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
+
+    query = query.skip(skip).limit(limit);
+
+    const events = await query;
+
+    res.status(200).json({
+      status: 'success',
+      results: events.length,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(events.length / limit),
+        totalEvents: events.length,
+        hasNextPage: events.length === limit,
+        hasPrevPage: page > 1
+      },
+      data: {
+        events
+      }
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: 'fail',
+      message: error.message
+    });
+  }
+};
+
 // Get single event
 exports.getEvent = async (req, res) => {
   try {

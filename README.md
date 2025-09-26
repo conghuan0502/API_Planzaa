@@ -61,6 +61,8 @@ The Swagger UI provides:
 #### Events
 - `GET /api/events` - Get all events with filtering and pagination (protected)
 - `POST /api/events` - Create a new event with poster (protected, multipart/form-data)
+- `GET /api/events/my-events` - Get events created by the authenticated user (protected)
+- `GET /api/events/joined-events` - Get events that the user has joined (protected)
 - `GET /api/events/:id` - Get a specific event (protected)
 - `PATCH /api/events/:id` - Update an event (protected, creator only)
 - `DELETE /api/events/:id` - Delete an event (protected, creator only)
