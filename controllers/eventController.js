@@ -337,8 +337,11 @@ exports.getJoinedEvents = async (req, res) => {
     const finalFilter = { $and: [baseFilter, additionalFilters] };
 
     let query = Event.find(finalFilter)
-      .populate('creator', 'name email')
-      .populate('participants.user', 'name email');
+      .populate('creator', 'name email avatar')
+      .populate('participants.user', 'name email avatar')
+      .populate('todoList.createdBy', 'name email')
+      .populate('todoList.assignedTo', 'name email')
+      .populate('imageAlbum.uploadedBy', 'name email');
 
     // Sorting
     if (req.query.sort) {
@@ -357,18 +360,58 @@ exports.getJoinedEvents = async (req, res) => {
 
     const events = await query;
 
+    // Enhance events with additional data
+    const enhancedEvents = events.map(event => {
+      const eventObj = event.toObject();
+      
+      // Add poster URL if available
+      if (eventObj.poster && eventObj.poster.filePath) {
+        eventObj.poster.url = eventObj.poster.filePath;
+      }
+
+      // Add Spotify embed URL if playlist exists
+      if (eventObj.spotifyPlaylist && eventObj.spotifyPlaylist.playlistId) {
+        eventObj.spotifyPlaylist.embedUrl = `https://open.spotify.com/embed/playlist/${eventObj.spotifyPlaylist.playlistId}`;
+      }
+
+      // Add virtual fields
+      eventObj.confirmedParticipantsCount = event.confirmedParticipantsCount;
+      eventObj.formattedStartDateTime = event.formattedStartDateTime;
+      eventObj.formattedEndDateTime = event.formattedEndDateTime;
+      eventObj.durationMinutes = event.durationMinutes;
+      eventObj.todoStats = event.todoStats;
+      eventObj.overdueTodos = event.overdueTodos;
+
+      // Add participant status for the current user
+      const userParticipant = eventObj.participants.find(p => 
+        p.user && p.user._id.toString() === req.user._id.toString()
+      );
+      eventObj.userParticipantStatus = userParticipant ? userParticipant.status : null;
+      eventObj.userJoinedAt = userParticipant ? userParticipant.joinedAt : null;
+
+      // Add image album with enhanced URLs
+      if (eventObj.imageAlbum && eventObj.imageAlbum.length > 0) {
+        eventObj.imageAlbum = eventObj.imageAlbum.map(image => ({
+          ...image,
+          url: image.url || image.cloudinaryId
+        }));
+      }
+
+      return eventObj;
+    });
+
     res.status(200).json({
       status: 'success',
-      results: events.length,
+      results: enhancedEvents.length,
       pagination: {
         currentPage: page,
-        totalPages: Math.ceil(events.length / limit),
-        totalEvents: events.length,
-        hasNextPage: events.length === limit,
+        totalPages: Math.ceil(enhancedEvents.length / limit),
+        totalEvents: enhancedEvents.length,
+        hasNextPage: enhancedEvents.length === limit,
         hasPrevPage: page > 1
       },
       data: {
-        events
+        events: enhancedEvents
       }
     });
   } catch (error) {

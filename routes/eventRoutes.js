@@ -294,7 +294,7 @@ const jsonParser = express.json();
  * @swagger
  * /events/joined-events:
  *   get:
- *     summary: Get all events that the authenticated user has joined
+ *     summary: Get all events that the authenticated user has joined with complete event data
  *     tags: [Events]
  *     security:
  *       - bearerAuth: []
@@ -336,7 +336,7 @@ const jsonParser = express.json();
  *         description: Filter by event status
  *     responses:
  *       200:
- *         description: User's joined events retrieved successfully
+ *         description: User's joined events retrieved successfully with complete data including poster, playlist, weather, todos, and image album
  *         content:
  *           application/json:
  *             schema:
@@ -367,7 +367,83 @@ const jsonParser = express.json();
  *                     events:
  *                       type: array
  *                       items:
- *                         $ref: '#/components/schemas/Event'
+ *                         allOf:
+ *                           - $ref: '#/components/schemas/Event'
+ *                           - type: object
+ *                             properties:
+ *                               poster:
+ *                                 type: object
+ *                                 properties:
+ *                                   url:
+ *                                     type: string
+ *                                     description: Direct URL to the event poster image
+ *                               spotifyPlaylist:
+ *                                 type: object
+ *                                 properties:
+ *                                   embedUrl:
+ *                                     type: string
+ *                                     description: Spotify embed URL for the playlist
+ *                               confirmedParticipantsCount:
+ *                                 type: number
+ *                                 description: Number of confirmed participants
+ *                               formattedStartDateTime:
+ *                                 type: string
+ *                                 format: date-time
+ *                                 description: Formatted start date and time
+ *                               formattedEndDateTime:
+ *                                 type: string
+ *                                 format: date-time
+ *                                 description: Formatted end date and time
+ *                               durationMinutes:
+ *                                 type: number
+ *                                 description: Event duration in minutes
+ *                               todoStats:
+ *                                 type: object
+ *                                 properties:
+ *                                   total:
+ *                                     type: number
+ *                                   completed:
+ *                                     type: number
+ *                                   pending:
+ *                                     type: number
+ *                                   highPriority:
+ *                                     type: number
+ *                                   completionRate:
+ *                                     type: number
+ *                               overdueTodos:
+ *                                 type: array
+ *                                 items:
+ *                                   $ref: '#/components/schemas/TodoItem'
+ *                               userParticipantStatus:
+ *                                 type: string
+ *                                 enum: [yes, no, maybe]
+ *                                 description: Current user's participation status
+ *                               userJoinedAt:
+ *                                 type: string
+ *                                 format: date-time
+ *                                 description: When the current user joined the event
+ *                               imageAlbum:
+ *                                 type: array
+ *                                 items:
+ *                                   type: object
+ *                                   properties:
+ *                                     imageId:
+ *                                       type: string
+ *                                     url:
+ *                                       type: string
+ *                                       description: Direct URL to the image
+ *                                     uploadedBy:
+ *                                       type: object
+ *                                       properties:
+ *                                         name:
+ *                                           type: string
+ *                                         email:
+ *                                           type: string
+ *                                     uploadedAt:
+ *                                       type: string
+ *                                       format: date-time
+ *                                     description:
+ *                                       type: string
  *       401:
  *         description: Not authorized
  *         content:
