@@ -722,6 +722,99 @@ exports.joinPublicEvent = async (req, res) => {
   }
 };
 
+// Update RSVP status for the authenticated user on an event
+exports.updateRsvp = async (req, res) => {
+  try {
+    const { status } = req.body || {};
+
+    if (!status || !['yes', 'no', 'maybe'].includes(status)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: "Invalid RSVP status. Must be one of: 'yes', 'no', 'maybe'"
+      });
+    }
+
+    const event = await Event.findById(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Event not found'
+      });
+    }
+
+    const participant = event.participants.find(p => p.user.toString() === req.user._id.toString());
+
+    if (!participant) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'You are not a participant of this event'
+      });
+    }
+
+    participant.status = status;
+    await event.save();
+
+    // Invalidate caches impacted by RSVP changes
+    invalidateEventCache(req.params.id, ['events:.*', 'user:.*:joinedEvents']);
+    invalidateUserCache(req.user._id.toString(), ['user:.*:joinedEvents']);
+
+    return res.status(200).json({
+      status: 'success',
+      data: { event }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 'fail',
+      message: error.message
+    });
+  }
+};
+
+// Leave an event (remove participation)
+exports.leaveEvent = async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Event not found'
+      });
+    }
+
+    const participantIndex = event.participants.findIndex(p => p.user.toString() === req.user._id.toString());
+
+    if (participantIndex === -1) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'You are not a participant of this event'
+      });
+    }
+
+    // Remove participant from event
+    event.participants.splice(participantIndex, 1);
+    await event.save();
+
+    // Remove event from user's joinedEvents
+    await User.findByIdAndUpdate(req.user._id, { $pull: { joinedEvents: event._id } });
+
+    // Invalidate caches impacted by participation changes
+    invalidateEventCache(req.params.id, ['events:.*', 'user:.*:joinedEvents']);
+    invalidateUserCache(req.user._id.toString(), ['user:.*:joinedEvents']);
+
+    return res.status(204).json({
+      status: 'success',
+      data: null
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 'fail',
+      message: error.message
+    });
+  }
+};
+
 // Upload image to event album
 exports.uploadAlbumImage = async (req, res) => {
   try {

@@ -13,6 +13,8 @@ const {
   joinEvent,
   getEventByInviteLink,
   joinPublicEvent,
+  updateRsvp,
+  leaveEvent,
   uploadAlbumImage,
   uploadMultipleAlbumImages,
   getAlbumImages,
@@ -1092,6 +1094,10 @@ router.route('/:id')
 router.post('/join/:inviteLink', joinEvent);
 // Join public event without invite
 router.post('/:id/join', joinPublicEvent);
+
+// RSVP routes
+router.patch('/:id/rsvp', jsonParser, invalidateCache(['events:.*', 'user:.*:joinedEvents']), updateRsvp);
+router.delete('/:id/rsvp', invalidateCache(['events:.*', 'user:.*:joinedEvents']), leaveEvent);
 
 // Album routes
 router.route('/:id/album')
