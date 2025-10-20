@@ -151,7 +151,10 @@ exports.sendNotification = async (req, res) => {
     // Send notification to multiple tokens
     const response = await messaging.sendMulticast({
       tokens: tokens,
-      ...payload
+      notification: payload.notification,
+      data: payload.data,
+      android: payload.android,
+      apns: payload.apns
     });
 
     // Process results
@@ -330,7 +333,10 @@ exports.sendEventNotification = async (req, res) => {
     // Send notification to event participants
     const response = await messaging.sendMulticast({
       tokens: tokens,
-      ...payload
+      notification: payload.notification,
+      data: payload.data,
+      android: payload.android,
+      apns: payload.apns
     });
 
     // Process results
@@ -792,7 +798,10 @@ exports.sendAutomaticEventNotification = async (eventId, notificationType, addit
     // Send notification to event participants
     const response = await messaging.sendMulticast({
       tokens: tokens,
-      ...payload
+      notification: payload.notification,
+      data: payload.data,
+      android: payload.android,
+      apns: payload.apns
     });
 
     console.log(`📱 Automatic ${notificationType} notification sent for "${event.title}": ${response.successCount} success, ${response.failureCount} failed`);
