@@ -199,4 +199,204 @@ const filterObj = (obj, ...allowedFields) => {
     if (allowedFields.includes(el)) newObj[el] = obj[el];
   });
   return newObj;
+};
+
+/**
+ * @swagger
+ * /api/users/fcm-token:
+ *   post:
+ *     summary: Update user's FCM token
+ *     description: Register or update the user's Firebase Cloud Messaging token for push notifications
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fcmToken
+ *             properties:
+ *               fcmToken:
+ *                 type: string
+ *                 description: Firebase Cloud Messaging registration token
+ *     responses:
+ *       200:
+ *         description: FCM token updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: FCM token updated successfully
+ *                     fcmToken:
+ *                       type: string
+ *       400:
+ *         description: Invalid request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+// Update user's FCM token
+exports.updateFCMToken = async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+
+    if (!fcmToken) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'FCM token is required'
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { fcmToken: fcmToken },
+      { new: true, runValidators: true }
+    );
+
+    // Invalidate user cache
+    invalidateUserCache(req.user._id.toString(), ['user:.*:profile']);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        message: 'FCM token updated successfully',
+        fcmToken: updatedUser.fcmToken
+      }
+    });
+  } catch (error) {
+    console.error('FCM token update error:', error);
+    res.status(400).json({
+      status: 'fail',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /api/users/notification-settings:
+ *   patch:
+ *     summary: Update user's notification settings
+ *     description: Update the user's notification preferences
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               eventUpdates:
+ *                 type: boolean
+ *                 description: Receive notifications for event updates
+ *               eventReminders:
+ *                 type: boolean
+ *                 description: Receive event reminder notifications
+ *               weatherAlerts:
+ *                 type: boolean
+ *                 description: Receive weather alert notifications
+ *               pushNotifications:
+ *                 type: boolean
+ *                 description: Enable/disable all push notifications
+ *     responses:
+ *       200:
+ *         description: Notification settings updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     notificationSettings:
+ *                       type: object
+ *                       properties:
+ *                         eventUpdates:
+ *                           type: boolean
+ *                         eventReminders:
+ *                           type: boolean
+ *                         weatherAlerts:
+ *                           type: boolean
+ *                         pushNotifications:
+ *                           type: boolean
+ *       400:
+ *         description: Invalid request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+// Update user's notification settings
+exports.updateNotificationSettings = async (req, res) => {
+  try {
+    const allowedFields = ['eventUpdates', 'eventReminders', 'weatherAlerts', 'pushNotifications'];
+    const filteredBody = filterObj(req.body, ...allowedFields);
+
+    if (Object.keys(filteredBody).length === 0) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'No valid notification settings provided'
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { 
+        $set: {
+          ...Object.keys(filteredBody).reduce((acc, key) => {
+            acc[`notificationSettings.${key}`] = filteredBody[key];
+            return acc;
+          }, {})
+        }
+      },
+      { new: true, runValidators: true }
+    );
+
+    // Invalidate user cache
+    invalidateUserCache(req.user._id.toString(), ['user:.*:profile']);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        notificationSettings: updatedUser.notificationSettings
+      }
+    });
+  } catch (error) {
+    console.error('Notification settings update error:', error);
+    res.status(400).json({
+      status: 'fail',
+      message: error.message
+    });
+  }
 }; 

@@ -7,7 +7,9 @@ const {
   login,
   getProfile,
   updateProfile,
-  updateAvatar
+  updateAvatar,
+  updateFCMToken,
+  updateNotificationSettings
 } = require('../controllers/userController');
 
 const router = express.Router();
@@ -277,5 +279,7 @@ router.use(protect);
 router.get('/profile', userCache(600), getProfile); // Cache for 10 minutes
 router.patch('/profile', invalidateCache(['user:.*:profile']), updateProfile);
 router.patch('/avatar', uploadAvatar, invalidateCache(['user:.*:profile']), updateAvatar);
+router.post('/fcm-token', invalidateCache(['user:.*:profile']), updateFCMToken);
+router.patch('/notification-settings', invalidateCache(['user:.*:profile']), updateNotificationSettings);
 
 module.exports = router; 

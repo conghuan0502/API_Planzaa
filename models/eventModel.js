@@ -120,6 +120,24 @@ const eventSchema = new mongoose.Schema({
       }
     }
   },
+  reminders: {
+    sent24h: {
+      type: Boolean,
+      default: false
+    },
+    sent2h: {
+      type: Boolean,
+      default: false
+    },
+    sent30m: {
+      type: Boolean,
+      default: false
+    },
+    lastChecked: {
+      type: Date,
+      default: null
+    }
+  },
   poster: {
     fileName: {
       type: String,

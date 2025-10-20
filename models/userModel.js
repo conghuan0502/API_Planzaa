@@ -55,7 +55,30 @@ const userSchema = new mongoose.Schema({
   joinedEvents: [{
     type: mongoose.Schema.ObjectId,
     ref: 'Event'
-  }]
+  }],
+  fcmToken: {
+    type: String,
+    default: null,
+    index: true
+  },
+  notificationSettings: {
+    eventUpdates: {
+      type: Boolean,
+      default: true
+    },
+    eventReminders: {
+      type: Boolean,
+      default: true
+    },
+    weatherAlerts: {
+      type: Boolean,
+      default: true
+    },
+    pushNotifications: {
+      type: Boolean,
+      default: true
+    }
+  }
 }, {
   timestamps: true
 });

@@ -12,11 +12,18 @@ const swaggerUi = require('swagger-ui-express');
 // Import Swagger specs
 const swaggerSpecs = require('./swagger');
 
+// Import Firebase configuration
+const { initializeFirebase } = require('./config/firebase');
+
+// Import notification scheduler
+const notificationScheduler = require('./services/notificationScheduler');
+
 // Import routes
 const userRoutes = require('./routes/userRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const locationRoutes = require('./routes/locationRoutes');
 const weatherRoutes = require('./routes/weatherRoutes');
+const fcmRoutes = require('./routes/fcmRoutes');
 
 // Import error handling middleware
 const AppError = require('./utils/appError');
@@ -24,6 +31,12 @@ const globalErrorHandler = require('./controllers/errorController');
 
 // Start express app
 const app = express();
+
+// Initialize Firebase Admin SDK
+initializeFirebase();
+
+// Start notification scheduler
+notificationScheduler.start();
 
 // Security HTTP headers
 app.use(helmet());
@@ -84,7 +97,8 @@ app.get('/', (req, res) => {
       users: '/api/users',
       events: '/api/events',
       locations: '/api/locations',
-      weather: '/api/weather'
+      weather: '/api/weather',
+      fcm: '/api/fcm'
     },
     timestamp: req.requestTime
   });
@@ -95,6 +109,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/weather', weatherRoutes);
+app.use('/api/fcm', fcmRoutes);
 
 // Handle undefined routes
 app.all('*', (req, res, next) => {

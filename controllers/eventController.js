@@ -2,6 +2,7 @@ const Event = require('../models/eventModel');
 const User = require('../models/userModel');
 const { uploadPoster, uploadAlbumImage, deleteFile, getFileUrl } = require('../utils/fileUpload');
 const { invalidateEventCache, invalidateUserCache } = require('../utils/cacheHelpers');
+const { sendAutomaticEventNotification } = require('./fcmController');
 const { v4: uuidv4 } = require('uuid');
 
 // Create new event
@@ -170,6 +171,14 @@ exports.createEvent = async (req, res) => {
         url: newEvent.poster.filePath
       }
     };
+
+    // Send FCM notification to event participants (non-blocking)
+    try {
+      await sendAutomaticEventNotification(newEvent._id, 'event_created');
+    } catch (fcmError) {
+      console.log('FCM notification failed for event creation:', fcmError.message);
+      // Don't fail the event creation if FCM notification fails
+    }
 
     res.status(201).json({
       status: 'success',
@@ -492,6 +501,14 @@ exports.updateEvent = async (req, res) => {
     invalidateEventCache(req.params.id, ['user:.*:my-events']);
     invalidateUserCache(req.user._id.toString(), ['user:.*:my-events']);
 
+    // Send FCM notification to event participants (non-blocking)
+    try {
+      await sendAutomaticEventNotification(req.params.id, 'event_updated');
+    } catch (fcmError) {
+      console.log('FCM notification failed for event update:', fcmError.message);
+      // Don't fail the event update if FCM notification fails
+    }
+
     res.status(200).json({
       status: 'success',
       data: {
@@ -538,6 +555,14 @@ exports.deleteEvent = async (req, res) => {
       { joinedEvents: req.params.id },
       { $pull: { joinedEvents: req.params.id } }
     );
+
+    // Send FCM notification to event participants (non-blocking)
+    try {
+      await sendAutomaticEventNotification(req.params.id, 'event_cancelled');
+    } catch (fcmError) {
+      console.log('FCM notification failed for event deletion:', fcmError.message);
+      // Don't fail the event deletion if FCM notification fails
+    }
 
     // Invalidate cache after successful event deletion
     invalidateEventCache(req.params.id, ['user:.*:my-events', 'user:.*:joinedEvents']);
