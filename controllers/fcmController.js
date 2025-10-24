@@ -714,6 +714,226 @@ exports.getReminderStatus = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/fcm/event/{eventId}/host-announcement:
+ *   post:
+ *     summary: Send host announcement to event participants
+ *     description: Send a custom notification message from the event host to all event participants
+ *     tags: [FCM]
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: Custom message from the host
+ *                 example: "Due to heavy rain, the event will be delayed by 30 minutes. Please arrive at 3:30 PM instead."
+ *               title:
+ *                 type: string
+ *                 description: Optional custom title (defaults to "Host Announcement")
+ *                 example: "Event Update"
+ *               priority:
+ *                 type: string
+ *                 enum: [low, normal, high]
+ *                 default: normal
+ *                 description: Notification priority level
+ *     responses:
+ *       200:
+ *         description: Host announcement sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     eventId:
+ *                       type: string
+ *                     eventTitle:
+ *                       type: string
+ *                     hostName:
+ *                       type: string
+ *                     participantCount:
+ *                       type: number
+ *                     successCount:
+ *                       type: number
+ *                     failureCount:
+ *                       type: number
+ *                     message:
+ *                       type: string
+ *       403:
+ *         description: Only event host can send announcements
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+// Send host announcement to event participants
+exports.sendHostAnnouncement = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { message, title = 'Host Announcement', priority = 'normal' } = req.body;
+
+    // Validate required parameters
+    if (!message || message.trim().length === 0) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Message is required and cannot be empty'
+      });
+    }
+
+    // Find the event and populate participants
+    const event = await Event.findById(eventId).populate('participants.user', 'fcmToken name email notificationSettings');
+    
+    if (!event) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Event not found'
+      });
+    }
+
+    // Check if the current user is the event host
+    if (event.creator.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Only the event host can send announcements'
+      });
+    }
+
+    // Filter participants who have notifications enabled and are not the host
+    const eligibleParticipants = event.participants.filter(participant => 
+      participant.user.fcmToken && 
+      participant.user.notificationSettings?.eventUpdates !== false &&
+      participant.user.notificationSettings?.pushNotifications !== false &&
+      participant.user._id.toString() !== req.user._id.toString() // Don't send to host
+    );
+
+    if (eligibleParticipants.length === 0) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'No eligible participants found to receive the announcement'
+      });
+    }
+
+    // Get Firebase messaging service
+    const messaging = getMessaging();
+
+    // Prepare notification payload with host announcement data
+    const payload = {
+      notification: {
+        title: title,
+        body: message
+      },
+      data: {
+        eventId: eventId,
+        eventTitle: event.title,
+        hostName: req.user.name,
+        notificationType: 'host_announcement',
+        priority: priority,
+        timestamp: new Date().toISOString()
+      },
+      android: {
+        priority: priority === 'high' ? 'high' : 'normal',
+        notification: {
+          sound: 'default',
+          channelId: priority === 'high' ? 'host_announcements' : 'event_notifications',
+          icon: 'ic_notification',
+          color: priority === 'high' ? '#FF6B6B' : '#4ECDC4'
+        }
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: 'default',
+            badge: 1,
+            category: 'HOST_ANNOUNCEMENT',
+            alert: {
+              title: title,
+              body: message
+            }
+          }
+        }
+      }
+    };
+
+    // Send notification to eligible participants
+    const tokens = eligibleParticipants.map(p => p.user.fcmToken);
+    const response = await messaging.sendMulticast({
+      tokens: tokens,
+      notification: payload.notification,
+      data: payload.data,
+      android: payload.android,
+      apns: payload.apns
+    });
+
+    // Process results
+    const results = response.responses.map((result, index) => ({
+      token: tokens[index],
+      success: result.success,
+      error: result.error?.code || null,
+      messageId: result.messageId || null
+    }));
+
+    const successCount = response.successCount;
+    const failureCount = response.failureCount;
+
+    // Log results
+    console.log(`📢 Host announcement sent for "${event.title}": ${successCount} success, ${failureCount} failed`);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        eventId: eventId,
+        eventTitle: event.title,
+        hostName: req.user.name,
+        participantCount: event.participants.length,
+        eligibleParticipants: eligibleParticipants.length,
+        successCount,
+        failureCount,
+        message: 'Host announcement sent successfully',
+        results
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ FCM Host Announcement Error:', error);
+    res.status(500).json({
+      status: 'fail',
+      message: 'Error sending host announcement',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 // Helper function to send automatic event notifications
 exports.sendAutomaticEventNotification = async (eventId, notificationType, additionalData = {}) => {
   try {

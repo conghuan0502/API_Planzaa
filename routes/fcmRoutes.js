@@ -19,6 +19,9 @@ router.post('/event/:eventId', fcmController.sendEventNotification);
 // Send notification to a specific user
 router.post('/user/:userId', fcmController.sendUserNotification);
 
+// Host announcement route
+router.post('/event/:eventId/host-announcement', fcmController.sendHostAnnouncement);
+
 // Reminder notification routes
 router.post('/reminder/test', fcmController.testEventReminder);
 router.get('/reminder/status', fcmController.getReminderStatus);
