@@ -1,6 +1,7 @@
 const { getMessaging } = require('../config/firebase');
 const Event = require('../models/eventModel');
 const User = require('../models/userModel');
+const mongoose = require('mongoose');
 
 /**
  * @swagger
@@ -811,6 +812,14 @@ exports.sendHostAnnouncement = async (req, res) => {
       });
     }
 
+    // Validate eventId format
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Invalid event ID format'
+      });
+    }
+
     // Find the event and populate participants
     const event = await Event.findById(eventId).populate('participants.user', 'fcmToken name email notificationSettings');
     
@@ -831,6 +840,7 @@ exports.sendHostAnnouncement = async (req, res) => {
 
     // Filter participants who have notifications enabled and are not the host
     const eligibleParticipants = event.participants.filter(participant => 
+      participant.user && // Ensure user is populated
       participant.user.fcmToken && 
       participant.user.notificationSettings?.eventUpdates !== false &&
       participant.user.notificationSettings?.pushNotifications !== false &&
