@@ -801,8 +801,11 @@ exports.getReminderStatus = async (req, res) => {
 // Send host announcement to event participants
 exports.sendHostAnnouncement = async (req, res) => {
   try {
+    console.log('📢 Starting sendHostAnnouncement...');
     const { eventId } = req.params;
     const { message, title = 'Host Announcement', priority = 'normal' } = req.body;
+
+    console.log('📢 Request params:', { eventId, message, title, priority });
 
     // Validate required parameters
     if (!message || message.trim().length === 0) {
@@ -820,8 +823,10 @@ exports.sendHostAnnouncement = async (req, res) => {
       });
     }
 
+    console.log('📢 Finding event and populating participants...');
     // Find the event and populate participants
     const event = await Event.findById(eventId).populate('participants.user', 'fcmToken name email notificationSettings');
+    console.log('📢 Event found:', event ? event.title : 'NOT FOUND');
     
     if (!event) {
       return res.status(404).json({
@@ -831,6 +836,10 @@ exports.sendHostAnnouncement = async (req, res) => {
     }
 
     // Check if the current user is the event host
+    console.log('📢 Checking host authorization...');
+    console.log('📢 Event creator:', event.creator);
+    console.log('📢 Current user ID:', req.user._id);
+
     if (event.creator.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         status: 'fail',
@@ -838,14 +847,24 @@ exports.sendHostAnnouncement = async (req, res) => {
       });
     }
 
+    console.log('📢 Filtering eligible participants...');
+    console.log('📢 Total participants:', event.participants.length);
+
     // Filter participants who have notifications enabled and are not the host
-    const eligibleParticipants = event.participants.filter(participant => 
+    const eligibleParticipants = event.participants.filter(participant =>
       participant.user && // Ensure user is populated
-      participant.user.fcmToken && 
+      participant.user.fcmToken &&
       participant.user.notificationSettings?.eventUpdates !== false &&
       participant.user.notificationSettings?.pushNotifications !== false &&
       participant.user._id.toString() !== req.user._id.toString() // Don't send to host
     );
+
+    console.log('📢 Eligible participants:', eligibleParticipants.length);
+    console.log('📢 Participant details:', eligibleParticipants.map(p => ({
+      userId: p.user._id,
+      name: p.user.name,
+      hasFcmToken: !!p.user.fcmToken
+    })));
 
     if (eligibleParticipants.length === 0) {
       return res.status(400).json({
@@ -855,7 +874,9 @@ exports.sendHostAnnouncement = async (req, res) => {
     }
 
     // Get Firebase messaging service
+    console.log('📢 Getting Firebase messaging service...');
     const messaging = getMessaging();
+    console.log('📢 Firebase messaging service obtained successfully');
 
     // Prepare notification payload with host announcement data
     const payload = {
@@ -896,7 +917,11 @@ exports.sendHostAnnouncement = async (req, res) => {
     };
 
     // Send notification to eligible participants
+    console.log('📢 Preparing to send FCM notifications...');
     const tokens = eligibleParticipants.map(p => p.user.fcmToken);
+    console.log('📢 FCM Tokens to send to:', tokens.length);
+
+    console.log('📢 Calling messaging.sendMulticast...');
     const response = await messaging.sendMulticast({
       tokens: tokens,
       notification: payload.notification,
@@ -904,6 +929,7 @@ exports.sendHostAnnouncement = async (req, res) => {
       android: payload.android,
       apns: payload.apns
     });
+    console.log('📢 FCM sendMulticast response received:', response);
 
     // Process results
     const results = response.responses.map((result, index) => ({
@@ -936,10 +962,21 @@ exports.sendHostAnnouncement = async (req, res) => {
 
   } catch (error) {
     console.error('❌ FCM Host Announcement Error:', error);
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Full error object:', JSON.stringify(error, null, 2));
+
     res.status(500).json({
       status: 'fail',
       message: 'Error sending host announcement',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        name: error.name,
+        code: error.code,
+        stack: error.stack
+      } : undefined
     });
   }
 };
