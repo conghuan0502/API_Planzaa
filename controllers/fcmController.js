@@ -1,6 +1,7 @@
 const { getMessaging } = require('../config/firebase');
 const Event = require('../models/eventModel');
 const User = require('../models/userModel');
+const { createNotificationsForUsers } = require('./notificationController');
 const mongoose = require('mongoose');
 
 /**
@@ -999,6 +1000,35 @@ exports.sendHostAnnouncement = async (req, res) => {
 
     // Log results
     console.log(`📢 Host announcement sent for "${event.title}": ${successCount} success, ${failureCount} failed`);
+
+    // Save notifications to database for successful deliveries
+    try {
+      const successfulParticipants = eligibleParticipants.filter((_, index) =>
+        response.responses[index]?.success
+      );
+
+      if (successfulParticipants.length > 0) {
+        const userIds = successfulParticipants.map(p => p.user._id);
+
+        await createNotificationsForUsers(userIds, {
+          type: 'host_announcement',
+          title: title,
+          body: message,
+          data: {
+            eventId: eventId,
+            eventTitle: event.title,
+            hostName: req.user.name,
+            priority: priority
+          },
+          deliveryStatus: 'delivered'
+        });
+
+        console.log(`💾 Saved ${successfulParticipants.length} notifications to database`);
+      }
+    } catch (dbError) {
+      // Don't fail the request if notification saving fails
+      console.error('⚠️ Error saving notifications to database:', dbError);
+    }
 
     res.status(200).json({
       status: 'success',

@@ -24,6 +24,7 @@ const eventRoutes = require('./routes/eventRoutes');
 const locationRoutes = require('./routes/locationRoutes');
 const weatherRoutes = require('./routes/weatherRoutes');
 const fcmRoutes = require('./routes/fcmRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 // Import error handling middleware
 const AppError = require('./utils/appError');
@@ -102,7 +103,8 @@ app.get('/', (req, res) => {
       events: '/api/events',
       locations: '/api/locations',
       weather: '/api/weather',
-      fcm: '/api/fcm'
+      fcm: '/api/fcm',
+      notifications: '/api/notifications'
     },
     timestamp: req.requestTime
   });
@@ -114,6 +116,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/fcm', fcmRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Handle undefined routes
 app.all('*', (req, res, next) => {
