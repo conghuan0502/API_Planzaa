@@ -205,6 +205,8 @@ exports.markAsRead = async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
+    console.log('📝 Mark as read request:', { notificationId: id, userId: userId.toString() });
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         status: 'fail',
@@ -212,12 +214,30 @@ exports.markAsRead = async (req, res) => {
       });
     }
 
+    // First check if notification exists at all
+    const notificationExists = await Notification.findById(id);
+    if (!notificationExists) {
+      console.log(`❌ Notification ${id} does not exist in database`);
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Notification does not exist'
+      });
+    }
+
+    console.log('📝 Found notification:', {
+      id: notificationExists._id.toString(),
+      userId: notificationExists.userId.toString(),
+      requestingUserId: userId.toString(),
+      match: notificationExists.userId.toString() === userId.toString()
+    });
+
     const notification = await Notification.findOne({ _id: id, userId });
 
     if (!notification) {
+      console.log(`❌ Notification ${id} exists but does not belong to user ${userId}`);
       return res.status(404).json({
         status: 'fail',
-        message: 'Notification not found'
+        message: 'Notification not found or does not belong to you'
       });
     }
 
@@ -404,6 +424,9 @@ exports.createNotification = async (notificationData) => {
 // Helper function to create notifications for multiple users
 exports.createNotificationsForUsers = async (userIds, notificationTemplate) => {
   try {
+    console.log('📬 Creating notifications for users:', userIds.map(id => id.toString()));
+    console.log('📬 Notification template:', notificationTemplate);
+
     const notifications = userIds.map(userId => ({
       userId,
       ...notificationTemplate
@@ -411,6 +434,7 @@ exports.createNotificationsForUsers = async (userIds, notificationTemplate) => {
 
     const result = await Notification.insertMany(notifications);
     console.log(`📬 Created ${result.length} notifications`);
+    console.log('📬 Notification IDs:', result.map(n => ({ id: n._id.toString(), userId: n.userId.toString() })));
     return result;
   } catch (error) {
     console.error('❌ Error creating notifications for users:', error);
