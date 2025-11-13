@@ -252,3 +252,6 @@ config/local.json
 
 # Firebase service account file
 planzaa-1bc8c-firebase-adminsdk-fbsvc-3caee7cb59.json
+
+# Ignore reserved device filename that can break git on Windows
+nul

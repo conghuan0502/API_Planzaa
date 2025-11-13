@@ -2,6 +2,7 @@ const express = require('express');
 const { protect } = require('../middleware/authMiddleware');
 const { uploadAvatar } = require('../middleware/uploadMiddleware');
 const { userCache, invalidateCache } = require('../middleware/cacheMiddleware');
+const { passwordResetLimiter } = require('../middleware/rateLimitMiddleware');
 const {
   register,
   login,
@@ -9,7 +10,9 @@ const {
   updateProfile,
   updateAvatar,
   updateFCMToken,
-  updateNotificationSettings
+  updateNotificationSettings,
+  requestOTP,
+  resetPassword
 } = require('../controllers/userController');
 
 const router = express.Router();
@@ -273,6 +276,8 @@ router.use(express.json());
 // Public routes
 router.post('/register', register);
 router.post('/login', login);
+router.post('/request-otp', passwordResetLimiter, requestOTP);
+router.post('/reset-password', passwordResetLimiter, resetPassword);
 
 // Protected routes
 router.use(protect);
