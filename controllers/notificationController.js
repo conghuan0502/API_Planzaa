@@ -108,6 +108,12 @@ exports.getNotifications = async (req, res) => {
       Notification.countDocuments({ userId, isRead: false })
     ]);
 
+    // Transform _id to id for frontend compatibility
+    const transformedNotifications = notifications.map(notification => ({
+      ...notification,
+      id: notification._id.toString()
+    }));
+
     const hasMore = skip + notifications.length < totalCount;
 
     console.log(`✅ Retrieved ${notifications.length} notifications (${unreadCount} unread)`);
@@ -115,7 +121,7 @@ exports.getNotifications = async (req, res) => {
     res.status(200).json({
       status: 'success',
       data: {
-        notifications,
+        notifications: transformedNotifications,
         totalCount,
         unreadCount,
         hasMore,
@@ -219,7 +225,12 @@ exports.markAsRead = async (req, res) => {
       return res.status(200).json({
         status: 'success',
         message: 'Notification already marked as read',
-        data: { notification }
+        data: {
+          notification: {
+            ...notification.toObject(),
+            id: notification._id.toString()
+          }
+        }
       });
     }
 
@@ -230,7 +241,12 @@ exports.markAsRead = async (req, res) => {
     res.status(200).json({
       status: 'success',
       message: 'Notification marked as read',
-      data: { notification }
+      data: {
+        notification: {
+          ...notification.toObject(),
+          id: notification._id.toString()
+        }
+      }
     });
 
   } catch (error) {
