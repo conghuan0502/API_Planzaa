@@ -58,7 +58,12 @@ const initializeFirebase = () => {
 // Get the messaging service
 const getMessaging = () => {
   try {
-    return admin.messaging();
+    if (admin.apps.length === 0) {
+      throw new Error('Firebase Admin SDK is not initialized. Please call initializeFirebase() first.');
+    }
+    const messaging = admin.messaging();
+    console.log('📱 Firebase messaging service methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(messaging)));
+    return messaging;
   } catch (error) {
     console.error('❌ Error getting Firebase messaging service:', error.message);
     throw error;

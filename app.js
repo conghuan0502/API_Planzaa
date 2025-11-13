@@ -32,6 +32,10 @@ const globalErrorHandler = require('./controllers/errorController');
 // Start express app
 const app = express();
 
+// Trust proxy - Important for deployment on Render, Heroku, etc.
+// This allows Express to correctly identify client IP addresses behind proxies
+app.set('trust proxy', 1);
+
 // Initialize Firebase Admin SDK
 initializeFirebase();
 

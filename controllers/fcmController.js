@@ -921,15 +921,70 @@ exports.sendHostAnnouncement = async (req, res) => {
     const tokens = eligibleParticipants.map(p => p.user.fcmToken);
     console.log('📢 FCM Tokens to send to:', tokens.length);
 
-    console.log('📢 Calling messaging.sendMulticast...');
-    const response = await messaging.sendMulticast({
-      tokens: tokens,
-      notification: payload.notification,
-      data: payload.data,
-      android: payload.android,
-      apns: payload.apns
-    });
-    console.log('📢 FCM sendMulticast response received:', response);
+    let response;
+
+    // Check if sendMulticast is available (firebase-admin v9+)
+    if (typeof messaging.sendMulticast === 'function') {
+      console.log('📢 Using sendMulticast method...');
+      response = await messaging.sendMulticast({
+        tokens: tokens,
+        notification: payload.notification,
+        data: payload.data,
+        android: payload.android,
+        apns: payload.apns
+      });
+    } else if (typeof messaging.sendEach === 'function') {
+      console.log('📢 sendMulticast not available, using sendEach method...');
+      const messages = tokens.map(token => ({
+        token: token,
+        notification: payload.notification,
+        data: payload.data,
+        android: payload.android,
+        apns: payload.apns
+      }));
+      response = await messaging.sendEach(messages);
+    } else if (typeof messaging.sendAll === 'function') {
+      console.log('📢 sendMulticast not available, using sendAll method...');
+      const messages = tokens.map(token => ({
+        token: token,
+        notification: payload.notification,
+        data: payload.data,
+        android: payload.android,
+        apns: payload.apns
+      }));
+      response = await messaging.sendAll(messages);
+    } else {
+      // Fallback to sending one by one using send()
+      console.log('📢 Using fallback send method (one by one)...');
+      const results = [];
+      let successCount = 0;
+      let failureCount = 0;
+
+      for (const token of tokens) {
+        try {
+          const messageId = await messaging.send({
+            token: token,
+            notification: payload.notification,
+            data: payload.data,
+            android: payload.android,
+            apns: payload.apns
+          });
+          results.push({ success: true, messageId });
+          successCount++;
+        } catch (error) {
+          results.push({ success: false, error: error.code });
+          failureCount++;
+        }
+      }
+
+      response = {
+        responses: results,
+        successCount: successCount,
+        failureCount: failureCount
+      };
+    }
+
+    console.log('📢 FCM response received:', response);
 
     // Process results
     const results = response.responses.map((result, index) => ({
