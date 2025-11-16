@@ -273,6 +273,133 @@ router.use(express.json());
  *               $ref: '#/components/schemas/Error'
  */
 
+/**
+ * @swagger
+ * /users/fcm-token:
+ *   post:
+ *     summary: Update FCM token for push notifications
+ *     description: Register or update the Firebase Cloud Messaging token for receiving push notifications
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fcmToken
+ *             properties:
+ *               fcmToken:
+ *                 type: string
+ *                 description: Firebase Cloud Messaging registration token
+ *                 example: "dGhpcyBpcyBhIGZha2UgZmNtIHRva2Vu"
+ *     responses:
+ *       200:
+ *         description: FCM token updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "FCM token updated successfully"
+ *                     fcmToken:
+ *                       type: string
+ *                       description: The updated FCM token
+ *       400:
+ *         description: Invalid request or missing FCM token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+/**
+ * @swagger
+ * /users/notification-settings:
+ *   patch:
+ *     summary: Update user notification settings
+ *     description: Update notification preferences for the authenticated user
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               eventUpdates:
+ *                 type: boolean
+ *                 description: Receive event update notifications
+ *                 example: true
+ *               eventReminders:
+ *                 type: boolean
+ *                 description: Receive event reminder notifications
+ *                 example: true
+ *               weatherAlerts:
+ *                 type: boolean
+ *                 description: Receive weather alert notifications
+ *                 example: true
+ *               pushNotifications:
+ *                 type: boolean
+ *                 description: Enable push notifications
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Notification settings updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     notificationSettings:
+ *                       type: object
+ *                       properties:
+ *                         eventUpdates:
+ *                           type: boolean
+ *                         eventReminders:
+ *                           type: boolean
+ *                         weatherAlerts:
+ *                           type: boolean
+ *                         pushNotifications:
+ *                           type: boolean
+ *       400:
+ *         description: Invalid input data or no valid settings provided
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 // Public routes
 router.post('/register', register);
 router.post('/login', login);

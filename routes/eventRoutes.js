@@ -45,8 +45,22 @@ const jsonParser = express.json();
  *     responses:
  *       200:
  *         description: Event retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   $ref: '#/components/schemas/Event'
  *       404:
  *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 
 /**
@@ -621,6 +635,18 @@ const jsonParser = express.json();
  *         schema:
  *           type: string
  *         description: Event invite link
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [yes, no, maybe]
+ *                 description: RSVP status (required if event.rsvpRequired is true, optional otherwise - defaults to 'yes')
+ *                 example: "yes"
  *     responses:
  *       200:
  *         description: Successfully joined the event
@@ -638,7 +664,7 @@ const jsonParser = express.json();
  *                 data:
  *                   $ref: '#/components/schemas/Event'
  *       400:
- *         description: Invalid invite link or already joined
+ *         description: Invalid invite link, already joined, or missing required RSVP status
  *         content:
  *           application/json:
  *             schema:
@@ -1038,10 +1064,22 @@ const jsonParser = express.json();
  *                       $ref: '#/components/schemas/TodoItem'
  *       400:
  *         description: Invalid input data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       403:
  *         description: Not authorized to update this todo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       404:
  *         description: Event or todo item not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *   delete:
  *     summary: Delete a todo item
  *     tags: [Event Todos]
@@ -1063,10 +1101,210 @@ const jsonParser = express.json();
  *     responses:
  *       200:
  *         description: Todo item deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Todo item deleted successfully"
  *       403:
  *         description: Not authorized to delete this todo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       404:
  *         description: Event or todo item not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+/**
+ * @swagger
+ * /events/{id}/join:
+ *   post:
+ *     summary: Join a public event by ID
+ *     description: Join a public event directly by event ID. Only works for public events (isPublic=true). For private events, use the invite link endpoint.
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [yes, no, maybe]
+ *                 description: RSVP status (required if event.rsvpRequired is true, optional otherwise - defaults to 'yes')
+ *                 example: "yes"
+ *     responses:
+ *       200:
+ *         description: Successfully joined the event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     event:
+ *                       $ref: '#/components/schemas/Event'
+ *       400:
+ *         description: Event is not public, already joined, event not active, missing required RSVP status, or event at capacity
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Event is private (use invite link instead)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+/**
+ * @swagger
+ * /events/{id}/rsvp:
+ *   patch:
+ *     summary: Update RSVP status for an event
+ *     description: Update your RSVP status (yes/no/maybe) for an event you have already joined
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [yes, no, maybe]
+ *                 description: New RSVP status
+ *                 example: "maybe"
+ *     responses:
+ *       200:
+ *         description: RSVP status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     event:
+ *                       $ref: '#/components/schemas/Event'
+ *       400:
+ *         description: Invalid RSVP status or user is not a participant
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   delete:
+ *     summary: Leave an event
+ *     description: Remove yourself from an event's participant list
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     responses:
+ *       200:
+ *         description: Successfully left the event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Successfully left the event"
+ *       400:
+ *         description: User is not a participant of this event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 
 // Public routes for open access via invite link

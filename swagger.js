@@ -65,6 +65,15 @@ const options = {
               type: 'string',
               description: 'User password (min 8 characters)'
             },
+            dateOfBirth: {
+              type: 'string',
+              format: 'date',
+              description: 'User date of birth (must be at least 13 years old)'
+            },
+            age: {
+              type: 'integer',
+              description: 'Calculated age from date of birth (virtual field)'
+            },
             createdEvents: {
               type: 'array',
               items: {
@@ -78,6 +87,36 @@ const options = {
                 type: 'string'
               },
               description: 'Array of event IDs the user has joined'
+            },
+            fcmToken: {
+              type: 'string',
+              description: 'Firebase Cloud Messaging token for push notifications'
+            },
+            notificationSettings: {
+              type: 'object',
+              properties: {
+                eventUpdates: {
+                  type: 'boolean',
+                  description: 'Receive event update notifications',
+                  default: true
+                },
+                eventReminders: {
+                  type: 'boolean',
+                  description: 'Receive event reminder notifications',
+                  default: true
+                },
+                weatherAlerts: {
+                  type: 'boolean',
+                  description: 'Receive weather alert notifications',
+                  default: true
+                },
+                pushNotifications: {
+                  type: 'boolean',
+                  description: 'Enable push notifications',
+                  default: true
+                }
+              },
+              description: 'User notification preferences'
             },
             createdAt: {
               type: 'string',
@@ -192,9 +231,48 @@ const options = {
             participants: {
               type: 'array',
               items: {
-                type: 'string'
+                $ref: '#/components/schemas/Participant'
               },
-              description: 'Array of user IDs participating in the event'
+              description: 'Array of participants with RSVP status'
+            },
+            imageAlbum: {
+              type: 'array',
+              items: {
+                $ref: '#/components/schemas/AlbumImage'
+              },
+              description: 'Event photo album'
+            },
+            reminders: {
+              type: 'object',
+              properties: {
+                sent24h: {
+                  type: 'boolean',
+                  description: 'Whether 24-hour reminder was sent',
+                  default: false
+                },
+                sent2h: {
+                  type: 'boolean',
+                  description: 'Whether 2-hour reminder was sent',
+                  default: false
+                },
+                sent30m: {
+                  type: 'boolean',
+                  description: 'Whether 30-minute reminder was sent',
+                  default: false
+                },
+                lastChecked: {
+                  type: 'string',
+                  format: 'date-time',
+                  description: 'Last time reminders were checked'
+                }
+              },
+              description: 'Event reminder tracking'
+            },
+            status: {
+              type: 'string',
+              enum: ['active', 'cancelled', 'completed'],
+              description: 'Event status',
+              default: 'active'
             },
             creator: {
               type: 'string',
@@ -221,6 +299,49 @@ const options = {
               },
               description: 'Array of todo items for the event'
             },
+            spotifyPlaylist: {
+              $ref: '#/components/schemas/SpotifyPlaylist',
+              description: 'Optional Spotify playlist for the event'
+            },
+            dressCode: {
+              type: 'string',
+              description: 'Optional dress code for the event'
+            },
+            poster: {
+              type: 'object',
+              properties: {
+                fileName: {
+                  type: 'string',
+                  description: 'Name of the poster file'
+                },
+                originalName: {
+                  type: 'string',
+                  description: 'Original filename'
+                },
+                fileSize: {
+                  type: 'integer',
+                  description: 'File size in bytes'
+                },
+                mimeType: {
+                  type: 'string',
+                  description: 'MIME type of the file'
+                },
+                cloudinaryId: {
+                  type: 'string',
+                  description: 'Cloudinary public ID'
+                },
+                filePath: {
+                  type: 'string',
+                  description: 'Full file path/URL'
+                },
+                uploadedAt: {
+                  type: 'string',
+                  format: 'date-time',
+                  description: 'When the poster was uploaded'
+                }
+              },
+              description: 'Event poster information'
+            },
             createdAt: {
               type: 'string',
               format: 'date-time'
@@ -228,6 +349,47 @@ const options = {
             updatedAt: {
               type: 'string',
               format: 'date-time'
+            }
+          }
+        },
+        SpotifyPlaylist: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Spotify playlist ID'
+            },
+            name: {
+              type: 'string',
+              description: 'Playlist name'
+            },
+            description: {
+              type: 'string',
+              description: 'Playlist description'
+            },
+            imageUrl: {
+              type: 'string',
+              description: 'URL to playlist cover image'
+            },
+            trackCount: {
+              type: 'integer',
+              description: 'Number of tracks in the playlist'
+            },
+            owner: {
+              type: 'string',
+              description: 'Playlist owner display name'
+            },
+            url: {
+              type: 'string',
+              description: 'Spotify playlist URL'
+            },
+            playlistId: {
+              type: 'string',
+              description: 'Spotify playlist ID (duplicate of id field)'
+            },
+            embedUrl: {
+              type: 'string',
+              description: 'Spotify embed URL for the playlist'
             }
           }
         },
@@ -356,6 +518,256 @@ const options = {
             }
           }
         },
+        Notification: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Notification ID'
+            },
+            userId: {
+              type: 'string',
+              description: 'User ID who receives the notification'
+            },
+            type: {
+              type: 'string',
+              enum: ['host_announcement', 'event_created', 'event_updated', 'event_cancelled', 'event_reminder_24h', 'event_reminder_2h', 'event_reminder_30m', 'rsvp_confirmed', 'rsvp_declined', 'rsvp_maybe', 'weather_alert', 'system'],
+              description: 'Type of notification'
+            },
+            title: {
+              type: 'string',
+              description: 'Notification title (max 100 characters)'
+            },
+            body: {
+              type: 'string',
+              description: 'Notification body text (max 500 characters)'
+            },
+            data: {
+              type: 'object',
+              properties: {
+                eventId: {
+                  type: 'string',
+                  description: 'Related event ID'
+                },
+                eventTitle: {
+                  type: 'string',
+                  description: 'Related event title'
+                },
+                hostName: {
+                  type: 'string',
+                  description: 'Event host name'
+                },
+                actionUrl: {
+                  type: 'string',
+                  description: 'URL for notification action'
+                },
+                priority: {
+                  type: 'string',
+                  enum: ['low', 'normal', 'high'],
+                  description: 'Notification priority'
+                },
+                metadata: {
+                  type: 'object',
+                  description: 'Additional metadata'
+                }
+              },
+              description: 'Notification data payload'
+            },
+            isRead: {
+              type: 'boolean',
+              description: 'Whether notification has been read',
+              default: false
+            },
+            readAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'When notification was marked as read'
+            },
+            fcmMessageId: {
+              type: 'string',
+              description: 'Firebase Cloud Messaging message ID'
+            },
+            deliveryStatus: {
+              type: 'string',
+              enum: ['pending', 'sent', 'delivered', 'failed'],
+              description: 'Notification delivery status'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        NotificationStats: {
+          type: 'object',
+          properties: {
+            total: {
+              type: 'integer',
+              description: 'Total number of notifications'
+            },
+            unread: {
+              type: 'integer',
+              description: 'Number of unread notifications'
+            },
+            read: {
+              type: 'integer',
+              description: 'Number of read notifications'
+            },
+            byType: {
+              type: 'object',
+              description: 'Count of notifications by type'
+            }
+          }
+        },
+        AlbumImage: {
+          type: 'object',
+          properties: {
+            imageId: {
+              type: 'string',
+              description: 'Unique image identifier'
+            },
+            originalName: {
+              type: 'string',
+              description: 'Original filename'
+            },
+            fileName: {
+              type: 'string',
+              description: 'Stored filename'
+            },
+            fileSize: {
+              type: 'integer',
+              description: 'File size in bytes'
+            },
+            mimeType: {
+              type: 'string',
+              description: 'MIME type (e.g., image/jpeg, image/png)'
+            },
+            cloudinaryId: {
+              type: 'string',
+              description: 'Cloudinary public ID'
+            },
+            url: {
+              type: 'string',
+              description: 'Image URL'
+            },
+            uploadedBy: {
+              type: 'string',
+              description: 'User ID who uploaded the image'
+            },
+            uploadedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'When image was uploaded'
+            },
+            description: {
+              type: 'string',
+              description: 'Optional image description'
+            }
+          }
+        },
+        Participant: {
+          type: 'object',
+          properties: {
+            user: {
+              type: 'string',
+              description: 'User ID of participant'
+            },
+            status: {
+              type: 'string',
+              enum: ['yes', 'no', 'maybe'],
+              description: 'RSVP status'
+            },
+            joinedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'When user joined the event'
+            }
+          }
+        },
+        Location: {
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              description: 'Location name'
+            },
+            address: {
+              type: 'string',
+              description: 'Full address'
+            },
+            coordinates: {
+              type: 'object',
+              properties: {
+                lat: {
+                  type: 'number',
+                  description: 'Latitude'
+                },
+                lon: {
+                  type: 'number',
+                  description: 'Longitude'
+                }
+              }
+            },
+            place_id: {
+              type: 'string',
+              description: 'LocationIQ place ID'
+            },
+            display_name: {
+              type: 'string',
+              description: 'Display name from LocationIQ'
+            }
+          }
+        },
+        LocationSearchResult: {
+          type: 'object',
+          properties: {
+            place_id: {
+              type: 'string',
+              description: 'Unique place identifier'
+            },
+            display_name: {
+              type: 'string',
+              description: 'Full display name of the location'
+            },
+            lat: {
+              type: 'string',
+              description: 'Latitude'
+            },
+            lon: {
+              type: 'string',
+              description: 'Longitude'
+            },
+            type: {
+              type: 'string',
+              description: 'Type of location (e.g., city, venue)'
+            },
+            address: {
+              type: 'object',
+              description: 'Detailed address components'
+            }
+          }
+        },
+        FCMNotification: {
+          type: 'object',
+          properties: {
+            title: {
+              type: 'string',
+              description: 'Notification title'
+            },
+            body: {
+              type: 'string',
+              description: 'Notification body'
+            },
+            data: {
+              type: 'object',
+              description: 'Additional data payload'
+            }
+          }
+        },
         Error: {
           type: 'object',
           properties: {
@@ -374,6 +786,45 @@ const options = {
   },
   apis: ['./routes/*.js', './controllers/*.js']
 };
+
+// Add tags definition
+const tags = [
+  {
+    name: 'Users',
+    description: 'User management and authentication endpoints'
+  },
+  {
+    name: 'Events',
+    description: 'Event management endpoints'
+  },
+  {
+    name: 'Event Album',
+    description: 'Image album management endpoints for events'
+  },
+  {
+    name: 'Event Todos',
+    description: 'Todo list management endpoints for events'
+  },
+  {
+    name: 'Locations',
+    description: 'Location search and geocoding endpoints using LocationIQ'
+  },
+  {
+    name: 'Weather',
+    description: 'Weather forecast endpoints using Open-Meteo API'
+  },
+  {
+    name: 'FCM',
+    description: 'Firebase Cloud Messaging push notification endpoints'
+  },
+  {
+    name: 'Notifications',
+    description: 'In-app notification management endpoints'
+  }
+];
+
+// Merge tags into options
+options.definition.tags = tags;
 
 const specs = swaggerJsdoc(options);
 
