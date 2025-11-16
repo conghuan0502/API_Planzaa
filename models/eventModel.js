@@ -75,6 +75,35 @@ const eventSchema = new mongoose.Schema({
   },
   // Optional Spotify playlist information for the event
   spotifyPlaylist: {
+    id: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    name: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    description: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    imageUrl: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    trackCount: {
+      type: Number,
+      default: null
+    },
+    owner: {
+      type: String,
+      trim: true,
+      default: null
+    },
     url: {
       type: String,
       trim: true,
@@ -98,6 +127,11 @@ const eventSchema = new mongoose.Schema({
         },
         message: 'Invalid Spotify playlist ID'
       }
+    },
+    embedUrl: {
+      type: String,
+      trim: true,
+      default: null
     }
   },
   weather: {

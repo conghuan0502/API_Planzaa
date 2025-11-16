@@ -20,6 +20,10 @@ exports.createEvent = async (req, res) => {
       if (req.body.todoItems && typeof req.body.todoItems === 'string') {
         req.body.todoItems = JSON.parse(req.body.todoItems);
       }
+      if (req.body.spotifyPlaylist && typeof req.body.spotifyPlaylist === 'string') {
+        req.body.spotifyPlaylist = JSON.parse(req.body.spotifyPlaylist);
+        console.log('📤 Backend: Parsed spotifyPlaylist from FormData:', req.body.spotifyPlaylist);
+      }
     } catch (parseError) {
       return res.status(400).json({
         status: 'fail',
