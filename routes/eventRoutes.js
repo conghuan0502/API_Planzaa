@@ -1351,16 +1351,16 @@ router.route('/:id/album/:imageId')
 // Todo list routes
 router.route('/:id/todos')
   .get(protect, userCache(300), getTodoList) // Cache for 5 minutes
-  .post(protect, jsonParser, invalidateCache(['user:.*:GET:/events/.*/todos.*']), addTodo);
+  .post(protect, jsonParser, invalidateCache(['user:.*:GET:/api/events/.*/todos.*']), addTodo);
 
 router.route('/:id/todos/:todoId')
   .patch(protect, jsonParser, (req, res, next) => {
     console.log('🔧 PATCH /todos/:todoId - About to invalidate cache');
     next();
-  }, invalidateCache(['user:.*:GET:/events/.*/todos.*']), updateTodo)
+  }, invalidateCache(['user:.*:GET:/api/events/.*/todos.*']), updateTodo)
   .delete(protect, (req, res, next) => {
     console.log('🗑️ DELETE /todos/:todoId - About to invalidate cache');
     next();
-  }, invalidateCache(['user:.*:GET:/events/.*/todos.*']), deleteTodo);
+  }, invalidateCache(['user:.*:GET:/api/events/.*/todos.*']), deleteTodo);
 
 module.exports = router; 
