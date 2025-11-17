@@ -27,6 +27,8 @@ The todo list system allows event creators and participants to manage tasks and 
 Authorization: Bearer <JWT_TOKEN>
 ```
 
+**Note:** This endpoint is cached for 5 minutes (300 seconds) to improve performance. Cache is automatically invalidated when todos are added, updated, or deleted.
+
 **Response:**
 ```json
 {
@@ -93,6 +95,13 @@ Content-Type: application/json
 }
 ```
 
+**Note:** 
+- `description` is required
+- `assignedTo` is optional (can be `null` or omitted)
+- `dueDate` format: `YYYY-MM-DD` (will be converted to full datetime)
+- `priority` defaults to `"medium"` if not provided
+- `notes` is optional
+
 **Response:**
 ```json
 {
@@ -131,11 +140,26 @@ Content-Type: application/json
 **Body:**
 ```json
 {
+  "description": "Updated description",
   "completed": true,
+  "assignedTo": "user_id_optional",
+  "dueDate": "2024-01-30",
   "priority": "medium",
   "notes": "Updated notes"
 }
 ```
+
+**Note:** All fields are optional. You can update any combination of fields:
+- `description`: Update the todo description
+- `completed`: Mark as completed (`true`) or uncompleted (`false`)
+- `assignedTo`: Change assignment (can be `null` or a user ID)
+- `dueDate`: Update the due date (format: `YYYY-MM-DD`)
+- `priority`: Change priority level (`low`, `medium`, or `high`)
+- `notes`: Update additional notes
+
+**Automatic behavior:**
+- When `completed` is set to `true`, `completedAt` is automatically set to the current date/time
+- When `completed` is set to `false`, `completedAt` is automatically set to `null`
 
 **Response:**
 ```json
@@ -275,7 +299,7 @@ await event.deleteTodo(todoId);
 ### Updating Todos
 - Event creator ✅
 - Event participants ✅
-- Assigned user ✅
+- Assigned user (user who is assigned to the todo) ✅
 - Others ❌
 
 ### Deleting Todos
@@ -485,17 +509,20 @@ Common error responses:
 
 ## Performance Considerations
 
+- **Caching**: The GET endpoint is cached for 5 minutes (300 seconds) to improve performance
+- **Cache Invalidation**: POST, PATCH, and DELETE operations automatically invalidate the cache to ensure data consistency
 - **Lazy Loading**: Consider loading todos only when needed
 - **Pagination**: For events with many todos, implement pagination
 - **Real-time Updates**: Use WebSockets for collaborative todo management
-- **Caching**: Cache todo statistics for frequently accessed events
 
 ## Security Features
 
 - **Authentication Required**: All todo operations require valid JWT token
 - **Authorization Checks**: Users can only modify todos they're authorized for
 - **Input Validation**: All todo data is validated before processing
-- **User Reference Validation**: Assigned users must be valid participants
+  - `description` is required when creating a todo
+  - `priority` must be one of: `low`, `medium`, or `high`
+- **User Reference Validation**: `assignedTo` can be any valid user ID or `null` (no validation that the user is a participant)
 
 ## Future Enhancements
 
@@ -537,6 +564,11 @@ For existing events:
 4. **Todo not updating**
    - Check that the todo ID is correct
    - Verify the user has permission to update the todo
+   - Ensure at least one field is provided in the request body
+
+5. **Due date format issues**
+   - Use format `YYYY-MM-DD` (e.g., `"2024-01-30"`) when sending in requests
+   - Response will return full ISO 8601 datetime format (e.g., `"2024-01-30T00:00:00.000Z"`)
 
 ### Debug Mode
 
