@@ -116,7 +116,9 @@ const userCache = (ttl = 300) => {
     ttl,
     keyGenerator: (req) => {
       if (!req.user) return null;
-      return `user:${req.user._id}:${req.method}:${req.originalUrl}:${JSON.stringify(req.query)}`;
+      const cacheKey = `user:${req.user._id}:${req.method}:${req.originalUrl}:${JSON.stringify(req.query)}`;
+      console.log(`[UserCache] Generated key: ${cacheKey}`);
+      return cacheKey;
     },
     skipCache: (req) => !req.user
   });

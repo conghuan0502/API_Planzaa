@@ -1354,7 +1354,13 @@ router.route('/:id/todos')
   .post(protect, jsonParser, invalidateCache(['user:.*:GET:/events/.*/todos.*']), addTodo);
 
 router.route('/:id/todos/:todoId')
-  .patch(protect, jsonParser, invalidateCache(['user:.*:GET:/events/.*/todos.*']), updateTodo)
-  .delete(protect, invalidateCache(['user:.*:GET:/events/.*/todos.*']), deleteTodo);
+  .patch(protect, jsonParser, (req, res, next) => {
+    console.log('🔧 PATCH /todos/:todoId - About to invalidate cache');
+    next();
+  }, invalidateCache(['user:.*:GET:/events/.*/todos.*']), updateTodo)
+  .delete(protect, (req, res, next) => {
+    console.log('🗑️ DELETE /todos/:todoId - About to invalidate cache');
+    next();
+  }, invalidateCache(['user:.*:GET:/events/.*/todos.*']), deleteTodo);
 
 module.exports = router; 
