@@ -292,6 +292,11 @@ const options = {
               description: 'Whether RSVP status is required to join',
               default: false
             },
+            isAlbumImageEnable: {
+              type: 'boolean',
+              description: 'Whether album image feature is enabled for this event',
+              default: true
+            },
             todoList: {
               type: 'array',
               items: {

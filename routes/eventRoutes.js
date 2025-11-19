@@ -193,6 +193,11 @@ const jsonParser = express.json();
  *                 type: number
  *                 description: Maximum number of participants
  *                 example: 50
+ *               isAlbumImageEnable:
+ *                 type: boolean
+ *                 description: Enable/disable album image feature for this event
+ *                 default: true
+ *                 example: true
  *     responses:
  *       201:
  *         description: Event created successfully
@@ -548,6 +553,10 @@ const jsonParser = express.json();
  *                 type: number
  *                 description: Maximum number of participants
  *                 example: 75
+ *               isAlbumImageEnable:
+ *                 type: boolean
+ *                 description: Enable/disable album image feature for this event
+ *                 example: false
  *     responses:
  *       200:
  *         description: Event updated successfully
@@ -749,6 +758,7 @@ const jsonParser = express.json();
  *         description: Event not found
  *   post:
  *     summary: Upload a single image to event album
+ *     description: Upload a single image to the event album. The album feature must be enabled for the event (isAlbumImageEnable=true). Only event creators and participants can upload images.
  *     tags: [Event Album]
  *     security:
  *       - bearerAuth: []
@@ -779,7 +789,18 @@ const jsonParser = express.json();
  *       400:
  *         description: Invalid file or no file provided
  *       403:
- *         description: Not authorized to upload to this event
+ *         description: Not authorized to upload to this event or album feature is disabled
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "fail"
+ *                 message:
+ *                   type: string
+ *                   example: "Album image feature is disabled for this event"
  *       404:
  *         description: Event not found
  */
@@ -789,6 +810,7 @@ const jsonParser = express.json();
  * /events/{id}/album/multiple:
  *   post:
  *     summary: Upload multiple images to event album
+ *     description: Upload multiple images to the event album in a single request. The album feature must be enabled for the event (isAlbumImageEnable=true). Only event creators and participants can upload images.
  *     tags: [Event Album]
  *     security:
  *       - bearerAuth: []
@@ -811,14 +833,25 @@ const jsonParser = express.json();
  *                 items:
  *                   type: string
  *                   format: binary
- *                 description: Multiple image files to upload
+ *                 description: Multiple image files to upload (max 10)
  *     responses:
  *       201:
  *         description: Images uploaded successfully
  *       400:
  *         description: Invalid files or no files provided
  *       403:
- *         description: Not authorized to upload to this event
+ *         description: Not authorized to upload to this event or album feature is disabled
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "fail"
+ *                 message:
+ *                   type: string
+ *                   example: "Album image feature is disabled for this event"
  *       404:
  *         description: Event not found
  */

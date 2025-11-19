@@ -285,6 +285,11 @@ const eventSchema = new mongoose.Schema({
     type: Number,
     default: null
   },
+  // Album image feature toggle
+  isAlbumImageEnable: {
+    type: Boolean,
+    default: true
+  },
   todoList: [{
     description: {
       type: String,

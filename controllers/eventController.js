@@ -856,6 +856,14 @@ exports.uploadAlbumImage = async (req, res) => {
       });
     }
 
+    // Check if album image feature is enabled for this event
+    if (!event.isAlbumImageEnable) {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Album image feature is disabled for this event'
+      });
+    }
+
     // Check if user is a participant or creator
     const isCreator = event.creator.toString() === req.user._id.toString();
     const isParticipant = event.participants.some(p => p.user.toString() === req.user._id.toString());
@@ -924,6 +932,14 @@ exports.uploadMultipleAlbumImages = async (req, res) => {
       return res.status(404).json({
         status: 'fail',
         message: 'Event not found'
+      });
+    }
+
+    // Check if album image feature is enabled for this event
+    if (!event.isAlbumImageEnable) {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Album image feature is disabled for this event'
       });
     }
 
