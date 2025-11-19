@@ -279,7 +279,7 @@ exports.sendEventNotification = async (req, res) => {
 
     // Find the event and populate participants
     const event = await Event.findById(eventId).populate('participants', 'fcmToken name email');
-    
+
     if (!event) {
       return res.status(404).json({
         status: 'fail',
@@ -464,7 +464,7 @@ exports.sendUserNotification = async (req, res) => {
 
     // Find the user
     const user = await User.findById(userId);
-    
+
     if (!user) {
       return res.status(404).json({
         status: 'fail',
@@ -618,7 +618,7 @@ exports.testEventReminder = async (req, res) => {
 
     const Event = require('../models/eventModel');
     const event = await Event.findById(eventId).populate('participants', 'fcmToken name notificationSettings');
-    
+
     if (!event) {
       return res.status(404).json({
         status: 'fail',
@@ -628,13 +628,13 @@ exports.testEventReminder = async (req, res) => {
 
     // Import notification scheduler
     const notificationScheduler = require('../services/notificationScheduler');
-    
+
     // Send reminder notification
     await notificationScheduler.sendEventReminder(event, reminderType);
 
     // Filter eligible participants for response
-    const eligibleParticipants = event.participants.filter(participant => 
-      participant.fcmToken && 
+    const eligibleParticipants = event.participants.filter(participant =>
+      participant.fcmToken &&
       participant.notificationSettings?.eventReminders !== false &&
       participant.notificationSettings?.pushNotifications !== false
     );
@@ -828,7 +828,7 @@ exports.sendHostAnnouncement = async (req, res) => {
     // Find the event and populate participants
     const event = await Event.findById(eventId).populate('participants.user', 'fcmToken name email notificationSettings');
     console.log('📢 Event found:', event ? event.title : 'NOT FOUND');
-    
+
     if (!event) {
       return res.status(404).json({
         status: 'fail',
@@ -1069,8 +1069,8 @@ exports.sendHostAnnouncement = async (req, res) => {
 // Helper function to send automatic event notifications
 exports.sendAutomaticEventNotification = async (eventId, notificationType, additionalData = {}) => {
   try {
-    const event = await Event.findById(eventId).populate('participants', 'fcmToken name email');
-    
+    const event = await Event.findById(eventId).populate('participants.user', 'fcmToken name email notificationSettings');
+
     if (!event) {
       console.log(`❌ Event ${eventId} not found for automatic notification`);
       return;
@@ -1078,8 +1078,12 @@ exports.sendAutomaticEventNotification = async (eventId, notificationType, addit
 
     // Extract FCM tokens from participants
     const tokens = event.participants
-      .filter(participant => participant.fcmToken)
-      .map(participant => participant.fcmToken);
+      .filter(participant =>
+        participant.user &&
+        participant.user.fcmToken &&
+        participant.user.notificationSettings?.eventUpdates !== false
+      )
+      .map(participant => participant.user.fcmToken);
 
     if (tokens.length === 0) {
       console.log(`⚠️ No participants with FCM tokens for event ${event.title}`);
